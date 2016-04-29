@@ -1,0 +1,17 @@
+---
+version: '2'
+services:
+  common:
+    build: "."
+    environment:
+      NODE_ENV: production
+  app:
+    extends:
+      service: common
+    command: node app.js
+    links:
+    - db
+    ports:
+    - 3000:3000
+  db:
+    image: mongo
