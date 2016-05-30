@@ -1,6 +1,6 @@
 # GO Bot Chat 
 
-A chat bot using Facebook's [Messenger platform](https://messengerplatform.fb.com/).  The bot will ask the user series of questions to provide park recommendations, based on activity, geolocation and method of transportation.
+A chat bot using Microsoft's [Bot Framework](https://dev.botframework.com/).  The bot will ask the user series of questions to provide park recommendations, based on activity, geolocation and method of transportation.
 
 ![gobot](/gobot.gif)
 ## Set up
