@@ -5,7 +5,7 @@ var builder = require('botbuilder');
 var API_URL = 'https://go-bot-api.herokuapp.com/';
 
 // Create bot and add dialogs
-var bot = new builder.BotConnectorBot({ appId: process.env.appId, appSecret: process.env.appId });
+var bot = new builder.BotConnectorBot({ appId: process.env.appId, appSecret: process.env.appSecret });
 bot.add('/', function (session) {
     session.send('Hello World');
 });
