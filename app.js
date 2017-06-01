@@ -1,10 +1,11 @@
+
 var express = require('express');
 var bodyParser = require('body-parser');
 var request = require('request');
 
 var app = new express();
 
-app.set('port', (process.env.PORT || 5000));
+app.set('port', (process.env.PORT || 5005));
 
 // Process application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -23,6 +24,11 @@ var MongoClient = require('mongodb').MongoClient;
 //API
 
 var API_URL = 'https://go-bot-api.herokuapp.com/';
+const emojiActivityMap = {
+  hiking: '🚶🏾',
+  biking: '🚴🏿',
+  swimming: '🏊🏿'
+}
 
 app.get('/', function(req, res) {
     res.send('Go Bot');
@@ -85,7 +91,7 @@ app.post('/webhook/', function(req, res) {
                         case 1:
                             col.updateOne({ id: sender }, { $set: { step: 2, activity: event.postback.payload } }, function(err, r) {
                                 if (event.postback && event.postback.payload) {
-                                    sendTextMessage(sender, "Where are you?");
+                                    sendLocationMessage(sender, `Sounds fun 😀. ${emojiActivityMap[event.postback.payload]} Where are you?`);
                                 }
                             });
                             break;
@@ -150,6 +156,24 @@ app.post('/webhook/', function(req, res) {
 });
 
 /* Helpers */
+function sendTypingIndicator(sender) {
+    request({
+        url: 'https://graph.facebook.com/v2.6/me/messages',
+        qs: { access_token: PAGE_ACCESS_TOKEN },
+        method: 'POST',
+        json: {
+            recipient: { id: sender },
+            "sender_action":"typing_on"
+        }
+    }, function(error, response, body) {
+        if (error) {
+            console.log('Error sending messages: ', error)
+        } else if (response.body.error) {
+            console.log('Error: ', response.body.error)
+        }
+    })
+}
+
 function sendTextMessage(sender, text) {
     messageData = {
         text: text
@@ -169,6 +193,31 @@ function sendTextMessage(sender, text) {
             console.log('Error: ', response.body.error)
         }
     })
+    sendTypingIndicator(sender)
+}
+
+function sendLocationMessage(sender, text) {
+    request({
+        url: 'https://graph.facebook.com/v2.6/me/messages',
+        qs: { access_token: PAGE_ACCESS_TOKEN },
+        method: 'POST',
+        json: {
+            recipient: { id: sender },
+            "message": {
+                "text": text,
+                "quick_replies": [{
+                    "content_type": "location",
+                }]
+            },
+        }
+    }, function(error, response, body) {
+        if (error) {
+            console.log('Error sending messages: ', error)
+        } else if (response.body.error) {
+            console.log('Error: ', response.body.error)
+        }
+    })
+    sendTypingIndicator(sender)
 }
 
 function sendActivityButtonMessage(sender, text) {
@@ -187,6 +236,7 @@ function sendActivityButtonMessage(sender, text) {
     }];
 
     sendButtonMessage(sender, text, buttons);
+    sendTypingIndicator(sender)
 }
 
 function sendTransitButtonMessage(sender) {
@@ -205,6 +255,7 @@ function sendTransitButtonMessage(sender) {
     }];
 
     sendButtonMessage(sender, "How are you getting there?", buttons);
+    sendTypingIndicator(sender)
 }
 
 function sendParksMessage(sender, doc) {
@@ -229,7 +280,9 @@ function sendParksMessage(sender, doc) {
             for (var i = 0; i < obj.recareas.length; i++) {
                 if (obj.recareas[i]) {
                     console.log(obj.recareas[i]);
-                    parks.push({ title: obj.recareas[i].name, image_url: obj.recareas[i].image, subtitle: "You're " + obj.recareas[i].travel_time + " away (" + obj.recareas[i].distance + "). The weather is " + obj.recareas[i].weather.summary.toLowerCase() + " " + Math.round(obj.recareas[i].weather.temperature) + " F.", buttons: [{ type: 'web_url', title: "Go!", url: 'https://www.google.com/maps/dir/' + doc.location + '/' + obj.recareas[i].latitude + ',' + obj.recareas[i].longitude }, { type: 'web_url', title: "Share", url: 'http://google.com' }, { type: "postback", title: "Bookmark Park", payload: obj.recareas[i].id }] });
+
+                    var streetviewLocation = `https:\/\/s3.amazonaws.com/outerspatial-production/raibot/peeker.html?lat=${obj.recareas[i].latitude}&lng=${obj.recareas[i].longitude}`;
+                    parks.push({ title: obj.recareas[i].name, image_url: obj.recareas[i].image, subtitle: "You're " + obj.recareas[i].travel_time + " away (" + obj.recareas[i].distance + "). The weather is " + obj.recareas[i].weather.summary.toLowerCase() + " " + Math.round(obj.recareas[i].weather.temperature) + " F.", buttons: [{ type: 'web_url', title: "Go!", url: 'https://www.google.com/maps/dir/' + doc.location + '/' + obj.recareas[i].latitude + ',' + obj.recareas[i].longitude }, { type: 'web_url', title: "Share", url: 'http://google.com' }, { type: "web_url", title: "Peek", url: streetviewLocation }] });
                 }
             }
 
@@ -260,6 +313,7 @@ function sendParksMessage(sender, doc) {
                     console.log('Error: ', response.body.error)
                 }
             })
+            sendTypingIndicator(sender)
         }
     });
 }
@@ -290,7 +344,9 @@ function sendButtonMessage(sender, text, buttons) {
             console.log('Error: ', response.body.error)
         }
     })
+    sendTypingIndicator(sender)
 }
+
 
 // Spin up the server
 app.listen(app.get('port'), function() {
